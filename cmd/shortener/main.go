@@ -6,6 +6,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"strings"
 )
 
 type storage map[string]string
@@ -43,7 +45,7 @@ func (s *storage) getShort() (string, error) {
 	return short, nil
 }
 
-func (s *storage) getUrl(short string) (string, error) {
+func (s *storage) getURL(short string) (string, error) {
 	url, ok := map[string]string(*s)[short]
 	if !ok {
 		return url, fmt.Errorf("error get url")
@@ -51,18 +53,20 @@ func (s *storage) getUrl(short string) (string, error) {
 	return url, nil
 }
 
-func (s *storage) saveUrl(url string, short string) error {
+func (s *storage) saveURL(url string, short string) error {
 	map[string]string(*s)[short] = url
 	return nil
 }
 
 func rootPost(rw http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
+		log.Printf("got url: %s\n", req.URL.Path)
 		http.Error(rw, "Wrong url path", http.StatusBadRequest)
 		return
 	}
 
-	if req.Header.Get("Content-Type") != "text/plain" {
+	if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
+		log.Printf("got header: %s\n", req.Header.Get("Content-Type"))
 		http.Error(rw, "Wrong content type.", http.StatusBadRequest)
 		return
 	}
@@ -79,7 +83,7 @@ func rootPost(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := urlStor.saveUrl(string(body), short); err != nil {
+	if err := urlStor.saveURL(string(body), short); err != nil {
 		log.Print(err.Error())
 		http.Error(rw, "Convert error", http.StatusInternalServerError)
 		return
@@ -92,17 +96,21 @@ func rootPost(rw http.ResponseWriter, req *http.Request) {
 
 func rootGet(rw http.ResponseWriter, req *http.Request) {
 	if req.URL.Path == "/" {
+		log.Printf("got url: %s\n", req.URL.Path)
 		http.Error(rw, "Wrong url path", http.StatusBadRequest)
 		return
 	}
 
-	if req.Header.Get("Content-Type") != "text/plain" {
-		http.Error(rw, "Wrong content type.", http.StatusBadRequest)
-		return
-	}
+	/*
+		if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
+			log.Printf("got header: %s\n", req.Header.Get("Content-Type"))
+			http.Error(rw, "Wrong content type.", http.StatusBadRequest)
+			return
+		}
+	*/
 
 	short := req.URL.Path[1:]
-	url, err := urlStor.getUrl(short)
+	url, err := urlStor.getURL(short)
 	if err != nil {
 		log.Print(err.Error())
 		http.Error(rw, "Wrong url path", http.StatusBadRequest)
@@ -125,10 +133,16 @@ func rootHandle(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, "Method not work", http.StatusMethodNotAllowed)
 		return
 	}
-	return
 }
 
 func main() {
+	logFile, err := os.OpenFile("shortener.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer logFile.Close()
+
+	log.SetOutput(logFile)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", rootHandle)
 

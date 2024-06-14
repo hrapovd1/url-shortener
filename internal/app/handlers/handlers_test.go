@@ -47,6 +47,7 @@ func TestRootPost(t *testing.T) {
 			rootPostHandler(rw, req)
 
 			response := rw.Result()
+			defer response.Body.Close()
 			body, _ := io.ReadAll(response.Body)
 
 			assert.Equal(t, test.want.status, response.StatusCode)
@@ -90,6 +91,7 @@ func TestRootGet(t *testing.T) {
 			rootGetHandler(rw, req)
 
 			response := rw.Result()
+			defer response.Body.Close()
 
 			assert.Equal(t, test.want.status, response.StatusCode)
 			assert.Equal(t, test.want.location, response.Header.Get("Location"))
@@ -135,6 +137,7 @@ func TestRootHandler(t *testing.T) {
 
 			if test.req.method == http.MethodPost {
 				response := rw.Result()
+				defer response.Body.Close()
 				body, _ := io.ReadAll(response.Body)
 
 				assert.Equal(t, test.want.status, response.StatusCode)
@@ -144,11 +147,13 @@ func TestRootHandler(t *testing.T) {
 				}
 			} else if test.req.method == http.MethodGet {
 				response := rw.Result()
+				defer response.Body.Close()
 
 				assert.Equal(t, test.want.status, response.StatusCode)
 				assert.Equal(t, test.want.location, response.Header.Get("Location"))
 			} else {
 				response := rw.Result()
+				defer response.Body.Close()
 
 				assert.Equal(t, test.want.status, response.StatusCode)
 			}
